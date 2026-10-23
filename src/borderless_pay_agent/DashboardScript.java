@@ -158,24 +158,43 @@ function upd(){
 }
 
 async function confirmM(){
-  if(CUR==='schedule'||CUR==='cancel'){
-    const m=CUR==='schedule'?'Scheduled for next month.':'Cancelled.';
-    $('md').innerHTML='<div class="okc">&#10003;</div><h4 style="text-align:center">Done</h4><p style="text-align:center">'+m+' This is a demo, so nothing was sent.</p><div class="mb"><button class="pri" onclick="closeM()">Close</button></div>';
+  const remaining=Math.max(LIMIT-SPENT,0);
+  const box=$('md');
+  const done=function(msg){
+    box.innerHTML='<div class="okc">&#10003;</div><h4 style="text-align:center">Done</h4><p style="text-align:center">'+msg+'</p><div class="mb"><button class="pri" onclick="closeM()">Close</button></div>';
+  };
+  const fail=function(msg){
+    box.innerHTML='<h4>Something went wrong</h4><p>'+esc(msg)+'</p><div class="mb"><button onclick="closeM()">Close</button></div>';
+  };
+  if(CUR==='cancel'){
+    done('Cancelled. Nothing was sent.');
     return;
   }
-  const amt=CUR==='split'?Math.max(LIMIT-SPENT,0):DATA.amount;
-  $('md').innerHTML='<p style="text-align:center"><b>Creating your PayPal sandbox order...</b></p>';
+  if(CUR==='schedule'){
+    try{
+      const r=await fetch('/api/schedule',{method:'POST',body:DATA.amount+'|'+DATA.recipient});
+      const d=await r.json();
+      if(d.error){fail(d.error);return;}
+      done('&#8377;'+fmt(DATA.amount)+' is scheduled for '+esc(d.due)+'. This is a demo, so nothing was sent.');
+      if(window.hRefresh)hRefresh();
+    }catch(e){fail(String(e));}
+    return;
+  }
+  let amt=DATA.amount;
+  box.innerHTML='<p style="text-align:center"><b>Creating your PayPal sandbox order...</b></p>';
   try{
+    if(CUR==='split'){
+      amt=remaining;
+      const rest=Math.max(DATA.amount-remaining,0);
+      if(rest>0){
+        await fetch('/api/schedule',{method:'POST',body:rest+'|'+DATA.recipient});
+      }
+    }
     const r=await fetch('/api/order',{method:'POST',body:amt+'|'+DATA.recipient});
     const d=await r.json();
-    if(d.error){
-      $('md').innerHTML='<h4>Something went wrong</h4><p>'+esc(d.error)+'</p><div class="mb"><button onclick="closeM()">Close</button></div>';
-      return;
-    }
+    if(d.error){fail(d.error);return;}
     window.location.href=d.approveUrl;
-  }catch(e){
-    $('md').innerHTML='<h4>Something went wrong</h4><p>'+esc(e)+'</p><div class="mb"><button onclick="closeM()">Close</button></div>';
-  }
+  }catch(e){fail(String(e));}
 }
 function closeM(){$('ov').classList.remove('show');}
 </script></body></html>
