@@ -1,0 +1,54 @@
+{
+  "info": {
+    "name": "Borderless Pay Agent",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8095" }
+  ],
+  "item": [
+    {
+      "name": "Check a payment (AI + rules + fees)",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+        "pm.test('Has a decision and 3 fee routes', function () {",
+        "  var j = pm.response.json();",
+        "  pm.expect(j.status).to.be.oneOf(['AUTO_APPROVED','NEEDS_APPROVAL','OVER_LIMIT']);",
+        "  pm.expect(j.fees.length).to.eql(3);",
+        "});"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "text/plain" }],
+        "body": { "mode": "raw", "raw": "Pay 9000 rupees tuition fee to my university abroad" },
+        "url": "{{baseUrl}}/api/pay"
+      }
+    },
+    {
+      "name": "Payment history",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+        "pm.test('Returns a list', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+      ] } }],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/history"
+      }
+    },
+    {
+      "name": "Create PayPal sandbox order",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+        "pm.test('Returns a PayPal approval link', function () {",
+        "  pm.expect(pm.response.json().approveUrl).to.include('paypal.com');",
+        "});"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "text/plain" }],
+        "body": { "mode": "raw", "raw": "1500|Friend in Germany" },
+        "url": "{{baseUrl}}/api/order"
+      }
+    }
+  ]
+}
