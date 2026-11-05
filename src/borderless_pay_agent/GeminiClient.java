@@ -2,15 +2,24 @@ package borderless_pay_agent;
 
 import java.net.URI;
 import java.net.http.*;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.*;
 
 public class GeminiClient {
 
-    // If you get a 404 error, change this to a model name shown in Google AI Studio.
-    static final String MODEL = "gemini-3.5-flash";
+    // Change the model without editing code: set GEMINI_MODEL in Render or in Eclipse.
+    static final String MODEL = System.getenv().getOrDefault("GEMINI_MODEL", "gemini-3.6-flash");
     static final HttpClient client = HttpClient.newHttpClient();
 
+    // Same question, same answer: saves the free daily quota.
+    private static final Map<String, String> CACHE = new ConcurrentHashMap<>();
+
     public static String ask(String prompt) throws Exception {
+        String cached = CACHE.get(prompt);
+        if (cached != null) {
+            return cached;
+        }
         String key = System.getenv("GEMINI_API_KEY");
         String body = "{\"contents\":[{\"parts\":[{\"text\":\"" + escape(prompt) + "\"}]}]}";
 
@@ -24,9 +33,11 @@ public class GeminiClient {
 
         HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
         if (res.statusCode() != 200) {
-            throw new RuntimeException("Gemini error " + res.statusCode() + ": " + res.body());
+            throw new RuntimeException("Gemini error " + res.statusCode());
         }
-        return extractText(res.body());
+        String text = extractText(res.body());
+        CACHE.put(prompt, text);
+        return text;
     }
 
     static String escape(String s) {
@@ -36,7 +47,7 @@ public class GeminiClient {
     static String extractText(String json) {
         Matcher m = Pattern.compile("\"text\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").matcher(json);
         if (!m.find()) {
-            throw new RuntimeException("No text in response: " + json);
+            throw new RuntimeException("No text in response");
         }
         return m.group(1).replace("\\n", "\n").replace("\\\"", "\"").replace("\\\\", "\\");
     }
