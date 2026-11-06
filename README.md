@@ -14,6 +14,19 @@ An AI payment agent that follows your spending rules, finds the cheapest way to 
 - The user can pay through a real **PayPal Sandbox** checkout (create order, approve, capture).
 - Every check, payment and scheduled payment is saved in an **AG Grid** history table with status filters, a spending bar, a totals row, search, row selection and CSV export.
 
+## How PayPal and AI are used
+**PayPal (Developer Sandbox):**
+- OAuth2 token endpoint to authenticate the app.
+- Orders API v2: the agent creates an order, the buyer approves it on PayPal's page, and the agent captures the payment when the buyer returns.
+- Two sandbox accounts: a business app (receives money) and a personal buyer (pays).
+- The capture response gives the PayPal fee, which is shown on the return page and saved in the history table.
+
+**AI (Google Gemini API):**
+- Reads the user's sentence and extracts the recipient and the amount.
+- Writes the plain-language explanation of each decision.
+- It never decides about money. The Java rules engine decides.
+- If the free quota runs out, the app falls back to a simple reader and a fixed explanation.
+
 ## Key design decision: the AI explains, the rules decide
 The AI never moves money and never makes the approve or hold decision. The decision comes from plain Java code that can be read and tested. The AI only understands the request and explains the result.
 
